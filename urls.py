@@ -41,6 +41,7 @@ FANGRAPHS_URL_ROOT = "http://www.fangraphs.com/"
 FANGRAPHS_URL_BASE = "{root}scoreboard.aspx?date={date}"
 FANGRAPHS_URL_PLAY = "{root}{log}"
 FANGRAPHS_URL_TEAM_RE = re.compile(r"team=([\w\s]+)&")
+FANGRAPHS_PLAYLOG_URL = FANGRAPHS_URL_ROOT + "plays.aspx?date={date}&team={team}&dh={dh}"
 
 FANGRAPHS_NAME_REMAP = {
     "Red Sox":      "BOS",
@@ -74,3 +75,4 @@ FANGRAPHS_NAME_REMAP = {
     "Twins":        "MIN",
     "Dodgers":      "LAN",
 }
+FANGRAPHS_NAME_REVERSE_REMAP = { value: key for (key, value) in FANGRAPHS_NAME_REMAP.items() }
