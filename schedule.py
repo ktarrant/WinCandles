@@ -1,17 +1,22 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import pprint
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 import pandas as pd
+import re
+from collections import OrderedDict
+import logging
 
 # Project-level imports
 from urls import *
+
+log = logging.getLogger(__name__)
 
 # ==================================================================================================
 # MLB.COM SCHEDULE DOWNLOADER
 # ==================================================================================================
 
-def split_mlb_schedule_result(schedule_result, key_remap=MLB_NAME_REMAP):
+def split_mlb_schedule_result(schedule_result, schedule_date, key_remap=MLB_NAME_REMAP):
     if "," in schedule_result:
         results = schedule_result.split(", ")
         result1 = results[0].split(" ")
@@ -21,6 +26,7 @@ def split_mlb_schedule_result(schedule_result, key_remap=MLB_NAME_REMAP):
             "away_score": int(result1[-1]),
             "home_team": key_remap[" ".join(result2[:-1])],
             "home_score": int(result2[-1]),
+            "date": schedule_date,
             }
 
     elif "@" in schedule_result:
@@ -31,26 +37,56 @@ def split_mlb_schedule_result(schedule_result, key_remap=MLB_NAME_REMAP):
              "home_score": 0,
              "away_team": key_remap[mid_result[1]],
              "away_score": 0,
+             "date": schedule_date,
              }
-    
 
-def get_mlb_schedule(schedule_date):
-    url = MLB_URL_SCHEDULE.format(date=schedule_date)
-    print("loading url: {}".format(url))
+# Should match: Sunday, May 28, 2017 and return May 28, 2017
+_mlb_date_re = re.compile("[A-Z][a-z]+, ([A-Z][a-z]+) ([0-9]+), ([0-9]{4})")
+
+def _get_mlb_sched_by_url(url):
+    log.info("loading url: {}".format(url))
     with urlopen(url) as webobj:
         soup = BeautifulSoup(webobj, "lxml")
-        first_table = soup.find('table', {'class': 'schedule-list'})
-        matchup_columns = first_table.findAll('td', {'class': 'schedule-matchup'})
-        text_results = [ td.text for td in matchup_columns ]
-        return [ split_mlb_schedule_result(text) for text in text_results ]
+        for schedule_module in soup.findAll('section', {'class': 'module'}):
+            schedule_header = schedule_module.find('h4')
+            header_match = _mlb_date_re.match(schedule_header.text)
+            if header_match is None:
+                continue
+            header_date = datetime.strptime(" ".join(header_match.groups()), '%b %d %Y')
+            schedule_table = schedule_module.find('table', {'class': 'schedule-list'})
+            matchup_columns = schedule_table.findAll('td', {'class': 'schedule-matchup'})
+            text_results = [ td.text for td in matchup_columns ]
+            yield [ split_mlb_schedule_result(text, header_date.date()) for text in text_results ]
+
+def get_mlb_schedule(start_date):
+    """ Gets the MLB schedule from start_date up to today. """
+    todays_schedule = [ game for game_list in _get_mlb_sched_by_url(MLB_URL_SCHEDULE_BASE)
+        for game in game_list ]
+    earliest_day = todays_schedule[0]["date"]
+    while earliest_day > start_date:
+        previous_set_day = earliest_day - timedelta(days=3)
+        previous_set_url = MLB_URL_SCHEDULE_DATE.format(date=previous_set_day)
+        # Tack the new game list onto the beginning because these are older games
+        todays_schedule = [ game for game_list in _get_mlb_sched_by_url(previous_set_url)
+            for game in game_list] + todays_schedule
+        earliest_day = previous_set_day
+
+    # url = MLB_URL_SCHEDULE.format(date=start_date)
+    schedule_table = pd.DataFrame(todays_schedule)
+    # filter out invalid date
+    schedule_table = schedule_table[
+        schedule_table["date"] >= start_date][schedule_table["date"] < date.today()]
+    return schedule_table
 
 
 # ==================================================================================================
 # FANGRAPHS GAME DAY LINK DOWNLOADER
 # ==================================================================================================
 
+""" NOTE: Should no longer be needed. Remove? """
 def get_play_logs(date, root=FANGRAPHS_URL_ROOT, key_remap=FANGRAPHS_NAME_REMAP):
     url = FANGRAPHS_URL_BASE.format(root=root, date=date)
+    log.info("loading url: {}".format(url))
     with urlopen(url) as webobj:
         soup = BeautifulSoup(webobj.read(), 'lxml')
 
@@ -66,17 +102,7 @@ def get_play_logs(date, root=FANGRAPHS_URL_ROOT, key_remap=FANGRAPHS_NAME_REMAP)
 
 
 if __name__ == "__main__":
-    schedule_date = date.today() - timedelta(days=3)
-    schedule = get_mlb_schedule(schedule_date)
-    playlog = get_play_logs(schedule_date)
-    for game in schedule:
-        home_team = game['home_team']
-        try:
-            game['playlog_url'] = playlog[home_team]
-        except KeyError:
-            print("Failed to find team in playlog: {}".format(home_team))
-            pprint.pprint(playlog)
-            exit(1)
-
-    df = pd.DataFrame(schedule)
-    df.to_csv("schedule.csv")
+    # Collect the schedule for the month of may
+    schedule = get_mlb_schedule(date(year=2017, month=5, day=1))
+    print(schedule)
+    schedule.to_csv("schedule.csv")

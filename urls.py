@@ -1,6 +1,7 @@
 import re
 
-MLB_URL_SCHEDULE = "http://m.mlb.com/schedule/{date.year:02}/{date.month:02}/{date.day:02}"
+MLB_URL_SCHEDULE_BASE = "http://m.mlb.com/schedule"
+MLB_URL_SCHEDULE_DATE = MLB_URL_SCHEDULE_BASE + "/{date.year:02}/{date.month:02}/{date.day:02}"
 
 MLB_NAME_REMAP = {
     "Twins": "MIN",
