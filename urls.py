@@ -76,3 +76,6 @@ FANGRAPHS_NAME_REMAP = {
     "Dodgers":      "LAN",
 }
 FANGRAPHS_NAME_REVERSE_REMAP = { value: key for (key, value) in FANGRAPHS_NAME_REMAP.items() }
+
+
+TEAM_COLORS_URL = "http://jim-nielsen.com/teamcolors/"
