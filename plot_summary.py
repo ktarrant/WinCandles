@@ -20,8 +20,7 @@ def _make_date_annot(index, date):
         'text': str(date)
     }
 
-def make_plotly_summary(team_name):
-    summary_filename = "summary_{}.csv".format(team_name)
+def make_plotly_summary(team_name, summary_filename, auto_open=True):
     summary = pd.DataFrame.from_csv(summary_filename)
     # Figure out which halfInnings represent new games
     new_games = summary[summary.shift(-1)["Date"] != summary["Date"]]
@@ -50,7 +49,7 @@ def make_plotly_summary(team_name):
         'showlegend': False,
     }
     fig = dict(data=data, layout=layout)
-    url = py.plot(fig, filename='{}_winCandles'.format(team_name))
+    url = py.plot(fig, filename='{}_winCandles'.format(team_name), auto_open=auto_open)
     return url
 
 if __name__ == "__main__":
@@ -59,6 +58,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plots a summary for a team using play logs")
     parser.add_argument("team")
     args = parser.parse_args()
-    make_plotly_summary(args.team)
+
+    summary_filename = "summary_{}.csv".format(team_name)
+    make_plotly_summary(args.team, summary_filename)
     
 
