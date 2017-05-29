@@ -6,26 +6,27 @@ import pandas as pd
 # Project-level imports
 from team_colors import TEAM_COLORS_LOOKUP
 
-def _make_game_annot(index):
+def _make_line_annot(index):
     return {
         'x0': index, 'x1': index,
         'y0': 0, 'y1': 1, 'xref': 'x', 'yref': 'paper',
         'line': {'color': 'rgb(30,30,30)', 'width': 1, 'dash': 'dot'},
     }
 
-if __name__ == "__main__":
-    import argparse
+def _make_date_annot(index, date):
+    return {
+        'x': index, 'y': 0.05, 'xref': 'x', 'yref': 'paper',
+        'showarrow': False, 'xanchor': 'left',
+        'text': str(date)
+    }
 
-    parser = argparse.ArgumentParser(description="Plots a summary for a team using play logs")
-    parser.add_argument("team")
-    args = parser.parse_args()
-
-    summary_filename = "summary_{}.csv".format(args.team)
+def make_plotly_summary(team_name):
+    summary_filename = "summary_{}.csv".format(team_name)
     summary = pd.DataFrame.from_csv(summary_filename)
     # Figure out which halfInnings represent new games
     new_games = summary[summary.shift(-1)["Date"] != summary["Date"]]
-    game_annots = [ _make_game_annot(i) for i in new_games.index ]
-    colors = TEAM_COLORS_LOOKUP[args.team]
+
+    colors = TEAM_COLORS_LOOKUP[team_name]
     trace = {
         "x": summary.index,
         "open":summary.Open_WE50,
@@ -36,22 +37,28 @@ if __name__ == "__main__":
         "increasing": {"line": {"color": colors[1]}}, 
         "line": {"color": 'rgba(31,119,180,1)'}, 
         "type": 'candlestick', 
-  # "xaxis": 'x', 
-  # "yaxis": 'y'
+        "xaxis": 'x1', 
     }
 
     data = [trace]
     layout = {
-        'title': '{} Accumulated Win Expectency'.format(args.team),
+        'title': '{} Accumulated Win Expectency'.format(team_name),
         'yaxis': {'title': 'Wins above .500'},
-        'xaxis': {'title': 'Half-Innings'},
-        'shapes': game_annots,
-        # 'annotations': [{
-        #     'x': '2007-12-01', 'y': 0.05, 'xref': 'x', 'yref': 'paper',
-        #     'showarrow': False, 'xanchor': 'left',
-        #     'text': 'Official start of the recession'c
-        # }]
+        'xaxis1': {'title': 'Half-Innings', 'domain': [summary.index[0], summary.index[-1]]},
+        'shapes': [ _make_line_annot(i) for i in new_games.index ],
+        'annotations': [ _make_date_annot(i, summary["Date"].loc[i]) for i in new_games.index[::4] ],
+        'showlegend': False,
     }
     fig = dict(data=data, layout=layout)
-    py.plot(fig, filename='{}_winCandles_V2'.format(args.team))
+    url = py.plot(fig, filename='{}_winCandles'.format(team_name))
+    return url
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Plots a summary for a team using play logs")
+    parser.add_argument("team")
+    args = parser.parse_args()
+    make_plotly_summary(args.team)
+    
 

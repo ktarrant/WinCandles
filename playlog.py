@@ -94,22 +94,9 @@ def summarize_team_from_schedule(schedule, team):
         summary["Opponent"] = [ opponent ] * entry_count
         yield summary
 
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Loads summary for a team using play logs")
-    parser.add_argument("team")
-    parser.add_argument("--verbose", action="store_true")
-    args = parser.parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
-    schedule = pd.DataFrame.from_csv("schedule.csv")
+def make_team_summary(source_csv, team, outfile):
+    schedule = pd.DataFrame.from_csv(source_csv)
     total_summary = None
-    team = args.team
     for summary in summarize_team_from_schedule(schedule, team):
         if total_summary is None:
             total_summary = summary
@@ -125,5 +112,23 @@ if __name__ == "__main__":
             summary["Max_WE50"] += base_WE50
             total_summary = pd.concat([total_summary, summary])
 
-    outfile = "summary_{}.csv".format(team)
     total_summary.to_csv(outfile)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Loads summary for a team using play logs")
+    parser.add_argument("team")
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--source", default="schedule.csv")
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    make_team_summary(args.source, args.team, "summary_{}.csv".format(team))
+
+    
