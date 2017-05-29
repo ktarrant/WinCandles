@@ -108,6 +108,6 @@ def get_play_logs(date, root=FANGRAPHS_URL_ROOT, key_remap=FANGRAPHS_NAME_REMAP)
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     # Collect the schedule for the month of may
-    schedule = get_mlb_schedule(date(year=2017, month=4, day=2))
+    schedule = get_mlb_schedule(date(year=2017, month=5, day=1))
     print(schedule)
     schedule.to_csv("schedule.csv")
