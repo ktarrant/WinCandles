@@ -52,11 +52,15 @@ def _get_mlb_sched_by_url(url):
             header_match = _mlb_date_re.match(schedule_header.text)
             if header_match is None:
                 continue
-            header_date = datetime.strptime(" ".join(header_match.groups()), '%b %d %Y')
+            header_date = datetime.strptime(" ".join(header_match.groups()), '%B %d %Y')
             schedule_table = schedule_module.find('table', {'class': 'schedule-list'})
             matchup_columns = schedule_table.findAll('td', {'class': 'schedule-matchup'})
             text_results = [ td.text for td in matchup_columns ]
-            yield [ split_mlb_schedule_result(text, header_date.date()) for text in text_results ]
+            try:
+                yield [ split_mlb_schedule_result(text, header_date.date())
+                    for text in text_results ]
+            except KeyError:
+                continue
 
 def get_mlb_schedule(start_date):
     """ Gets the MLB schedule from start_date up to today. """
@@ -102,7 +106,8 @@ def get_play_logs(date, root=FANGRAPHS_URL_ROOT, key_remap=FANGRAPHS_NAME_REMAP)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     # Collect the schedule for the month of may
-    schedule = get_mlb_schedule(date(year=2017, month=5, day=1))
+    schedule = get_mlb_schedule(date(year=2017, month=4, day=2))
     print(schedule)
     schedule.to_csv("schedule.csv")

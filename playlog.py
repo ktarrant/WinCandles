@@ -16,6 +16,8 @@ def get_playlog_data(url):
     with urlopen(url) as webobj:
         soup = BeautifulSoup(webobj.read(), 'lxml')
     play_table = soup.find('table', {'class': 'rgMasterTable'})
+    if play_table is None:
+        raise ValueError("Play log missing: '{}'".format(url))
     table_headers = play_table.findAll('th', {'class': 'rgHeader'})
     clean_headers = [ td.text.strip() for td in table_headers ]
     table_entries = play_table.findAll('tr', {'class': ['rgRow', 'rgAltRow']})
@@ -28,7 +30,7 @@ def get_playlog_data(url):
 
 def convert_playlog_to_summary(playlog):
     playlog["HalfInning"] = (playlog["Inn."] - 1) * 2 + playlog["Half"]
-    playlog["WE50"] = playlog["WE"] - 50
+    playlog["WE50"] = (playlog["WE"] - 50.0) / 50.0
     entry_count = len(playlog.index)
     close_values = playlog[playlog["HalfInning"].shift(-1) != playlog["HalfInning"]].set_index("HalfInning")
     # Make open values from the close values. Set the first open value to 0 as that is game start
@@ -57,15 +59,27 @@ def summarize_team_from_schedule(schedule, team):
             continue
 
         if last_date is None or last_date != game.date:
-            dh = 0
             last_date = game.date
+            dh = 0
         else:
-            log.info("Setting dh flag as there are two games on {}".format(game.date))
-            dh = 1
+            if dh == 0:
+                log.error("Detected there are two games on {} yet only one saved".format(game.date))
+            elif dh == 1:
+                log.info("Detected there are two games on {} and setting up second game".format(game.date))
+                dh = 2
+            else:
+                raise ValueError("Detected 3 games in one day?? Is that possible??")
 
-        fangraphs_name = FANGRAPHS_NAME_REVERSE_REMAP[game.home_team]
-        playlog_url = FANGRAPHS_PLAYLOG_URL.format(date=game.date, team=fangraphs_name, dh=dh)
-        playlog = get_playlog_data(playlog_url)
+        fangraphs_name = FANGRAPHS_NAME_REVERSE_REMAP[game.home_team].replace(" ", "%20")
+        try:
+            playlog_url = FANGRAPHS_PLAYLOG_URL.format(date=game.date, team=fangraphs_name, dh=dh)
+            playlog = get_playlog_data(playlog_url)
+        except ValueError:
+            log.debug("Failed to load date {} with dh=0, setting dh=1".format(game.date))
+            dh = 1
+            playlog_url = FANGRAPHS_PLAYLOG_URL.format(date=game.date, team=fangraphs_name, dh=dh)
+            playlog = get_playlog_data(playlog_url)
+
         summary = convert_playlog_to_summary(playlog)
         if team == game.away_team:
             # Away team stats need to be negated
