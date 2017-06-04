@@ -121,7 +121,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Loads summary for a team using play logs")
     parser.add_argument("team")
     parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--source", default="schedule.csv")
+    parser.add_argument("--source", default="./cache/schedule.csv")
     args = parser.parse_args()
 
     if args.verbose:
@@ -129,6 +129,6 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=logging.INFO)
 
-    make_team_summary(args.source, args.team, "summary_{}.csv".format(team))
+    make_team_summary(args.source, args.team, "summary_{}.csv".format(args.team))
 
     
