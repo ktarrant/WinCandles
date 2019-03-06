@@ -33,7 +33,7 @@ def _make_date_annot(index, date):
         'text': str(date)
     }
 
-def _make_team_fig():
+def _make_team_fig(summary):
     # Figure out which halfInnings represent new games
     new_games = summary[summary.shift(-1)["Date"] != summary["Date"]]
 
@@ -57,11 +57,20 @@ def _make_team_fig():
         }
     )
 
+def collapse_bars(df):
+    r_open = df.Open_WE50.iloc[0]
+    r_close = df.Close_WE50.iloc[-1]
+    r_high = df.Max_WE50.max()
+    r_low = df.Min_WE50.min()
+
+
 @app.callback(
      dash.dependencies.Output('wincandle-history', 'figure'),
      [dash.dependencies.Input('interval-dropdown', 'value')])
 def make_team_summary(selected_interval):
     (trace, layout) = _make_team_fig()
+
+
 
     data = [trace]
     layout.update({
